@@ -24,11 +24,10 @@ logging.info(datetime.now())
 
 import numpy as np
 
-
 # ####################################################################
 def gauss_jacobi(
     *, A: np.array, b: np.array, x0: np.array, tol: float, max_iter: int
-) -> np.array:
+) -> tuple:
     """Resuelve el sistema de ecuaciones lineales Ax = b mediante el método de Jacobi.
 
     ## Parameters
@@ -40,13 +39,13 @@ def gauss_jacobi(
 
     ## Return
     ``x``: Vector solución del sistema de ecuaciones lineales.
+    ``trajectory``: Lista de vectores que representa la trayectoria de la aproximación.
     """
-
     # --- Validación de los argumentos de la función ---
     if not isinstance(A, np.ndarray):
         logging.debug("Convirtiendo A a numpy array.")
         A = np.array(A, dtype=float)
-    assert A.shape[0] == A.shape[1], "La matriz A debe ser de tamaño n-by-(n)."
+    assert A.shape[0] == A.shape[1], "La matriz A debe ser de tamaño n-by-n."
 
     if not isinstance(b, np.ndarray):
         logging.debug("Convirtiendo b a numpy array.")
@@ -60,26 +59,28 @@ def gauss_jacobi(
     # --- Algoritmo ---
     n = A.shape[0]
     x = x0.copy()
-    logging.info(f"i= {0} x: {x.T}")
-    for k in range(1, max_iter):
-        x_new = np.zeros((n, 1))  # prealloc
+    trajectory = [x.copy()]
+
+    for k in range(max_iter):
+        x_new = np.zeros(n)
         for i in range(n):
-            suma = sum([A[i, j] * x[j] for j in range(n) if j != i])
+            suma = np.sum(A[i, :i] * x[:i]) + np.sum(A[i, i+1:] * x[i+1:])
             x_new[i] = (b[i] - suma) / A[i, i]
 
-        if np.linalg.norm(x_new - x) < tol:
-            return x_new
+        # Verificar convergencia
+        if np.linalg.norm(x_new - x, ord=np.inf) < tol:
+            return x_new, trajectory
 
-        x = x_new.copy()
-        logging.info(f"i= {k} x: {x.T}")
+        x = x_new
+        trajectory.append(x.copy())
+        logging.info(f"Iteración {k}: {x}")
 
-    return x
-
+    return x, trajectory
 
 # ####################################################################
 def gauss_seidel(
     *, A: np.array, b: np.array, x0: np.array, tol: float, max_iter: int
-) -> np.array:
+) -> tuple:
     """Resuelve el sistema de ecuaciones lineales Ax = b mediante el método de Gauss-Seidel.
 
     ## Parameters
@@ -91,12 +92,13 @@ def gauss_seidel(
 
     ## Return
     ``x``: Vector solución del sistema de ecuaciones lineales.
+    ``trajectory``: Lista de vectores que representa la trayectoria de la aproximación.
     """
     # --- Validación de los argumentos de la función ---
     if not isinstance(A, np.ndarray):
         logging.debug("Convirtiendo A a numpy array.")
         A = np.array(A, dtype=float)
-    assert A.shape[0] == A.shape[1], "La matriz A debe ser de tamaño n-by-(n)."
+    assert A.shape[0] == A.shape[1], "La matriz A debe ser de tamaño n-by-n."
 
     if not isinstance(b, np.ndarray):
         logging.debug("Convirtiendo b a numpy array.")
@@ -110,20 +112,20 @@ def gauss_seidel(
     # --- Algoritmo ---
     n = A.shape[0]
     x = x0.copy()
+    trajectory = [x.copy()]
 
-    logging.info(f"i= {0} x: {x.T}")
-    for k in range(1, max_iter):
-        x_new = np.zeros((n, 1))  # prealloc
+    for k in range(max_iter):
+        x_new = x.copy()
         for i in range(n):
-            suma = sum([A[i, j] * x_new[j] for j in range(i) if j != i]) + sum(
-                [A[i, j] * x[j] for j in range(i, n) if j != i]
-            )
+            suma = np.sum(A[i, :i] * x_new[:i]) + np.sum(A[i, i+1:] * x[i+1:])
             x_new[i] = (b[i] - suma) / A[i, i]
 
-        if np.linalg.norm(x_new - x) < tol:
-            return x_new
+        # Verificar convergencia
+        if np.linalg.norm(x_new - x, ord=np.inf) < tol:
+            return x_new, trajectory
 
-        x = x_new.copy()
-        logging.info(f"i= {k} x: {x.T}")
+        x = x_new
+        trajectory.append(x.copy())
+        logging.info(f"Iteración {k}: {x}")
 
-    return x
+    return x, trajectory
